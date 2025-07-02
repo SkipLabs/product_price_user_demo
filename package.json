@@ -13,7 +13,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "packageManager": "pnpm@10.10.0",
+  "packageManager": "pnpm@10.12.4",
   "devDependencies": {
     "@skipruntime/core": "^0.0.16",
     "@skipruntime/helpers": "^0.0.16",
