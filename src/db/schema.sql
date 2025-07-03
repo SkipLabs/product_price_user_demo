@@ -19,6 +19,52 @@ CREATE TABLE posts (
     "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE products (
+    "id" SERIAL PRIMARY KEY,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "created_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE product_prices (
+    "id" SERIAL PRIMARY KEY,
+    "product_id" INTEGER REFERENCES products(id) ON DELETE CASCADE,
+    "price" NUMERIC(10, 2) NOT NULL,
+    "created_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE user_partners (
+    "id" SERIAL PRIMARY KEY,
+    "user_id" INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    "partner_id" INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    "created_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE user_product_thresholds (
+    "id" SERIAL PRIMARY KEY,
+    "user_id" INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    "product_id" INTEGER REFERENCES products(id) ON DELETE CASCADE,
+    "upper_threshold" NUMERIC(10, 2) NOT NULL,
+    "lower_threshold" NUMERIC(10, 2) NOT NULL,
+    "created_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE user_owned_products (
+    "id" SERIAL PRIMARY KEY,
+    "user_id" INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    "product_id" INTEGER REFERENCES products(id) ON DELETE CASCADE,
+    "quantity" INTEGER NOT NULL DEFAULT 1,
+    "purchase_price" NUMERIC(10, 2),
+    "purchase_date" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    "created_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, product_id)
+);
+
 -- Create tags table for categorizing posts
 CREATE TABLE tags (
     "id" SERIAL PRIMARY KEY,
@@ -36,6 +82,7 @@ CREATE TABLE post_tags (
 CREATE INDEX idx_posts_status ON posts(status);
 CREATE INDEX idx_posts_author ON posts(author_id);
 CREATE INDEX idx_posts_published_at ON posts(published_at);
+
 
 -- Insert SkipLabs team members
 INSERT INTO users (username, email, password_hash) VALUES
@@ -90,3 +137,62 @@ INSERT INTO post_tags (post_id, tag_id) VALUES
     (8, 1), (8, 2),  -- Bill's post: Technology, Programming
     (9, 1), (9, 3),  -- Vint's post: Technology, Web Development
     (10, 2), (10, 1); -- Barbara's post: Programming, Technology
+
+INSERT INTO products (name, description) VALUES
+    ('SuperWidget', 'The ultimate widget for all your widget needs.'),
+    ('MegaGadget', 'A gadget so mega, it''s practically a small moon.'),
+    ('HyperTool', 'For when you need a tool that goes beyond hyper.'),
+    ('QuantumDevice', 'A device that operates on quantum principles.'),
+    ('NanoGizmo', 'A gizmo so small, you might need a microscope to see it.');
+
+INSERT INTO product_prices (product_id, price) VALUES
+    (1, 19.99),
+    (2, 299.99),
+    (3, 49.99),
+    (4, 999.99),
+    (5, 0.99);
+
+INSERT INTO user_partners (user_id, partner_id) VALUES
+    (1, 2),  -- Ada partners with Alan
+    (1, 3),  -- Ada partners with Grace
+    (2, 4),  -- Alan partners with Linus
+    (3, 5),  -- Grace partners with Tim
+    (4, 6),  -- Linus partners with Margaret
+    (5, 7),  -- Tim partners with Steve
+    (6, 8),  -- Margaret partners with Bill
+    (7, 9),  -- Steve partners with Vint
+    (8, 10), -- Bill partners with Barbara
+    (9, 1),  -- Vint partners with Ada
+    (10, 2), -- Barbara partners with Alan
+    (1, 4),  -- Ada partners with Linus
+    (2, 5),  -- Alan partners with Tim
+    (3, 6),  -- Grace partners with Margaret
+    (4, 7),  -- Linus partners with Steve
+    (5, 8),  -- Tim partners with Bill
+    (2, 3),  -- Alan partners with Grace
+    (3, 4),  -- Grace partners with Linus
+    (4, 5),  -- Linus partners with Tim
+    (5, 6),  -- Tim partners with Margaret
+    (6, 7),  -- Margaret partners with Steve
+    (7, 8),  -- Steve partners with Bill
+    (8, 9),  -- Bill partners with Vint
+    (9, 10); -- Vint partners with Barbara
+
+INSERT INTO user_product_thresholds (user_id, product_id, upper_threshold, lower_threshold) VALUES
+    (1, 1, 100.00, 10.00),  -- Ada's thresholds for SuperWidget
+    (2, 2, 500.00, 50.00),  -- Alan's thresholds for MegaGadget
+    (3, 3, 200.00, 20.00),  -- Grace's thresholds for HyperTool
+    (4, 4, 1000.00, 100.00), -- Linus's thresholds for QuantumDevice
+    (5, 5, 10.00, 1.00);     -- Tim's thresholds for NanoGizmo
+
+INSERT INTO user_owned_products (user_id, product_id, quantity, purchase_price, purchase_date) VALUES
+    (1, 1, 3, 19.99, '2024-01-15 10:30:00'),  -- Ada owns 3 SuperWidgets
+    (1, 3, 1, 45.00, '2024-01-20 14:15:00'),  -- Ada owns 1 HyperTool
+    (2, 2, 2, 250.00, '2024-01-18 09:45:00'), -- Alan owns 2 MegaGadgets
+    (3, 1, 5, 18.50, '2024-01-22 16:30:00'),  -- Grace owns 5 SuperWidgets (bought at different price)
+    (3, 4, 1, 899.99, '2024-01-25 11:00:00'), -- Grace owns 1 QuantumDevice
+    (4, 3, 2, 49.99, '2024-01-19 13:20:00'),  -- Linus owns 2 HyperTools
+    (5, 5, 10, 0.95, '2024-01-21 08:45:00'),  -- Tim owns 10 NanoGizmos
+    (6, 2, 1, 299.99, '2024-01-23 15:30:00'), -- Margaret owns 1 MegaGadget
+    (7, 4, 1, 999.99, '2024-01-24 12:15:00'), -- Steve owns 1 QuantumDevice
+    (8, 1, 2, 19.99, '2024-01-26 10:00:00');  -- Bill owns 2 SuperWidgets

@@ -1,95 +1,51 @@
-import type {
-  Context,
-  EagerCollection,
-  Json,
-  Values,
-  Resource,
-  SkipService,
-} from '@skipruntime/core';
+import type { Context, SkipService } from '@skipruntime/core';
 
 import { runService } from '@skipruntime/server';
 import { SkipServiceBroker } from '@skipruntime/helpers';
 import { postgresExternalService } from './db/db.js';
-import { Post, User } from './db/models.js';
+import { Post, User, Product, ProductPrice, UserOwnedProduct } from './db/models.js';
+import {
+  PostsMapper,
+  PostsResource,
+  PostsResourceInputs,
+  PostsServiceInputs,
+} from './mappers/postMappers.js';
+import {
+  ProductPriceIndexMapper,
+  ProductPriceMapper,
+  ProductResource,
+  ProductResourceInputs,
+  PricesMapper,
+  PricesResource,
+  PricesResourceInputs,
+} from './mappers/productMappers.js';
+import {
+  UsersMapper,
+  UsersResource,
+  UsersResourceInputs,
+  UserOwnedProductsMapper,
+  UserOwnedProductsResource,
+  UserOwnedProductsResourceInputs,
+} from './mappers/userMappers.js';
 
-type PostWithAuthor = {
-  id: number;
-  title: string;
-  content: string;
-  status: string;
-  published_at: string;
-  created_at: string;
-  updated_at: string;
-  author: {
-    name: string;
-    email: string;
-  };
-  [key: string]: string | number | { name: string; email: string };
-};
+// Combined service inputs and resource inputs
+type CombinedServiceInputs = Record<string, never>;
+type CombinedResourceInputs = PostsResourceInputs & ProductResourceInputs & UsersResourceInputs & UserOwnedProductsResourceInputs & PricesResourceInputs;
 
-class PostsMapper {
-  constructor(private users: EagerCollection<number, User>) {}
-
-  mapEntry(key: number, values: Values<Post>): Iterable<[number, PostWithAuthor]> {
-    const post: Post = values.getUnique();
-    let author;
-    try {
-      author = this.users.getUnique(post.author_id);
-    } catch {
-      author = {
-        username: 'unknown author',
-        email: 'unknown email',
-      };
-    }
-    return [
-      [
-        key,
-        {
-          id: post.id,
-          title: post.title,
-          content: post.content,
-          status: post.status,
-          published_at: post.published_at,
-          created_at: post.created_at,
-          updated_at: post.updated_at,
-          author: {
-            name: author.username,
-            email: author.email,
-          },
-        },
-      ],
-    ];
-  }
-}
-
-type PostsResourceInputs = {
-  posts: EagerCollection<number, PostWithAuthor>;
-};
-
-type PostsResourceParams = { limit?: number };
-
-class PostsResource implements Resource<PostsResourceInputs> {
-  private limit: number;
-
-  constructor(jsonParams: Json) {
-    const params = jsonParams as PostsResourceParams;
-    if (params.limit === undefined) this.limit = 25;
-    else this.limit = params.limit;
-  }
-
-  instantiate(collections: PostsResourceInputs): EagerCollection<number, PostWithAuthor> {
-    return collections.posts.take(this.limit);
-  }
-}
-
-type PostsServiceInputs = Record<string, never>;
-
-export const service: SkipService<PostsServiceInputs, PostsResourceInputs> = {
+export const service: SkipService<CombinedServiceInputs, CombinedResourceInputs> = {
   initialData: {},
-  resources: { posts: PostsResource },
+  resources: {
+    posts: PostsResource,
+    products: ProductResource,
+    users: UsersResource,
+    userOwnedProducts: UserOwnedProductsResource,
+    prices: PricesResource,
+  },
   externalServices: { postgres: postgresExternalService },
-  createGraph(_inputs: PostsServiceInputs, context: Context): PostsResourceInputs {
+  createGraph(_inputs: CombinedServiceInputs, context: Context): CombinedResourceInputs {
     const serialIDKey = { key: { col: 'id', type: 'SERIAL' } };
+
+    // External resources
     const posts = context.useExternalResource<number, Post>({
       service: 'postgres',
       identifier: 'posts',
@@ -100,23 +56,52 @@ export const service: SkipService<PostsServiceInputs, PostsResourceInputs> = {
       identifier: 'users',
       params: serialIDKey,
     });
+    const products = context.useExternalResource<number, Product>({
+      service: 'postgres',
+      identifier: 'products',
+      params: serialIDKey,
+    });
+    const productPrices = context.useExternalResource<number, ProductPrice>({
+      service: 'postgres',
+      identifier: 'product_prices',
+      params: serialIDKey,
+    });
+    const userOwnedProducts = context.useExternalResource<number, UserOwnedProduct>({
+      service: 'postgres',
+      identifier: 'user_owned_products',
+      params: serialIDKey,
+    });
+
+    // Create intermediate collections
+    const productPricesByProductId = productPrices.map(ProductPriceIndexMapper);
+
     return {
       posts: posts.map(PostsMapper, users),
+      productsWithPrices: products.map(ProductPriceMapper, productPricesByProductId),
+      users: users.map(UsersMapper),
+      userOwnedProducts: userOwnedProducts.map(UserOwnedProductsMapper, users, products, productPricesByProductId),
+      prices: productPrices.map(PricesMapper),
     };
   },
 };
 
-// Start the reactive service with specified ports
-const server = await runService(service, {
-  streaming_port: 8080,
-  control_port: 8081,
-});
+// Initialize Skip services
+async function initializeSkipServices() {
+  // Start the reactive service with specified ports
+  const server = await runService(service, {
+    streaming_port: 8080,
+    control_port: 8081,
+  });
 
-// Initialize the service broker for client communication
-const serviceBroker = new SkipServiceBroker({
-  host: 'localhost',
-  control_port: 8081,
-  streaming_port: 8080,
-});
+  // Initialize the service broker for client communication
+  const serviceBroker = new SkipServiceBroker({
+    host: 'localhost',
+    control_port: 8081,
+    streaming_port: 8080,
+  });
 
-export { server, serviceBroker };
+  return { server, serviceBroker };
+}
+
+// Export the service initialization function
+export { initializeSkipServices };

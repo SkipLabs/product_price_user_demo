@@ -1,123 +1,13 @@
 import Fastify, { FastifyRequest, FastifyReply } from 'fastify';
-import {
-  createPost,
-  deletePost,
-  getPostById,
-  getUserById,
-  getUsers,
-  publishPost,
-  unpublishPost,
-} from './db/db.js';
 import { APIError } from './errors.js';
-import { PostCreate } from './db/models.js';
-import { server, serviceBroker } from './skipservice.js';
+import { initializeSkipServices } from './skipservice.js';
+import userRoutes from './endpoints/users.js';
+import postRoutes from './endpoints/posts.js';
+import productRoutes from './endpoints/products.js';
 
 const app = Fastify({ logger: true });
 const port = 3000;
-const SKIP_READ_URL = process.env.SKIP_READ_URL || 'http://localhost:8080';
 
-// Plugins will be registered in the start function
-
-interface GetUserParams {
-  id: string;
-}
-
-interface GetPostParams {
-  id: string;
-}
-
-interface GetStreamPostsParams {
-  uid: string;
-}
-
-interface PostCreateBody {
-  title: string;
-  content: string;
-  author_id: number;
-  status: string;
-}
-
-interface UpdatePostParams {
-  id: string;
-}
-
-app.get('/users', async (request: FastifyRequest, reply: FastifyReply) => {
-  const users = await getUsers();
-  return users;
-});
-
-app.get<{ Params: GetUserParams }>(
-  '/users/:id',
-  async (request: FastifyRequest<{ Params: GetUserParams }>, reply: FastifyReply) => {
-    const { id } = request.params;
-    const user = await getUserById(id);
-    return user;
-  }
-);
-
-app.get<{ Params: GetPostParams }>(
-  '/posts/:id',
-  async (request: FastifyRequest<{ Params: GetPostParams }>, reply: FastifyReply) => {
-    const { id } = request.params;
-    const post = await getPostById(id);
-    return post;
-  }
-);
-
-app.post<{ Body: PostCreateBody }>(
-  '/posts',
-  async (request: FastifyRequest<{ Body: PostCreateBody }>, reply: FastifyReply) => {
-    const { title, content, author_id, status } = request.body;
-    const post = await createPost({
-      title,
-      content,
-      author_id,
-      status,
-    });
-    return post;
-  }
-);
-
-app.get<{ Params: GetStreamPostsParams }>(
-  '/streams/posts/:uid',
-  async (request: FastifyRequest<{ Params: GetStreamPostsParams }>, reply: FastifyReply) => {
-    const uid = Number(request.params.uid);
-    const uuid = await serviceBroker.getStreamUUID('posts', uid);
-    return reply.redirect(`${SKIP_READ_URL}/v1/streams/${uuid}`, 301);
-  }
-);
-
-app.get('/streams/posts', async (request: FastifyRequest, reply: FastifyReply) => {
-  const uuid = await serviceBroker.getStreamUUID('posts');
-  return reply.redirect(`${SKIP_READ_URL}/v1/streams/${uuid}`, 301);
-});
-
-app.patch<{ Params: UpdatePostParams }>(
-  '/posts/:id/publish',
-  async (request: FastifyRequest<{ Params: UpdatePostParams }>, reply: FastifyReply) => {
-    const { id } = request.params;
-    const post = await publishPost(id);
-    return post;
-  }
-);
-
-app.patch<{ Params: UpdatePostParams }>(
-  '/posts/:id/unpublish',
-  async (request: FastifyRequest<{ Params: UpdatePostParams }>, reply: FastifyReply) => {
-    const { id } = request.params;
-    const post = await unpublishPost(id);
-    return post;
-  }
-);
-
-app.delete<{ Params: UpdatePostParams }>(
-  '/posts/:id',
-  async (request: FastifyRequest<{ Params: UpdatePostParams }>, reply: FastifyReply) => {
-    const { id } = request.params;
-    await deletePost(id);
-    return reply.status(204).send();
-  }
-);
 
 app.setNotFoundHandler(async (request: FastifyRequest, reply: FastifyReply) => {
   return reply.status(404).type('text/plain').send(`
@@ -146,6 +36,18 @@ app.setErrorHandler(async (error: Error, request: FastifyRequest, reply: Fastify
 
 const start = async () => {
   try {
+    // Initialize Skip services first
+    const { server: skipServer, serviceBroker } = await initializeSkipServices();
+
+    // Make serviceBroker and skipServer available to the route handlers BEFORE starting
+    app.decorate('serviceBroker', serviceBroker);
+    app.decorate('skipServer', skipServer);
+
+    // Register endpoint modules
+    await app.register(userRoutes);
+    await app.register(postRoutes);
+    await app.register(productRoutes);
+
     // Register plugins
     await app.register(import('@fastify/cors'), {
       origin: true,
@@ -166,7 +68,10 @@ start();
 // - SIGTERM: System termination requests (kill command, container orchestration, etc.)
 ['SIGTERM', 'SIGINT'].forEach((sig) =>
   process.on(sig, async () => {
-    await server.close();
+    const skipServer = (app as any).skipServer;
+    if (skipServer) {
+      await skipServer.close();
+    }
     await app.close();
     console.log('\nServers shut down.');
   })

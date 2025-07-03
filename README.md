@@ -1,93 +1,156 @@
-# Skip Postgres Template
+# Skip Real-Time Streaming Demo
 
-This template provides a starting point for building Skip services with PostgreSQL integration. It includes a complete setup for real-time data streaming and persistence.
+Real-time reactive data streaming demo with Skip - showcasing cross-resource updates and automatic data enrichment
 
-## What's Included
+## 🚀 What This Demo Shows
 
-- Skip service setup with PostgreSQL integration
-- Real-time data streaming capabilities
-- RESTful API endpoints for post management
-- Docker configuration for PostgreSQL
-- TypeScript configuration
-- Development scripts and utilities
+This project demonstrates Skip's powerful reactive data streaming capabilities through a live, interactive demo featuring:
 
-## Quick Start
+- **Real-time data streaming** across multiple interconnected resources
+- **Automatic data enrichment** with cross-table joins and relationships
+- **Reactive updates** that propagate instantly across the entire data graph
+- **Investment tracking** with historical vs. current pricing
+- **Multi-stream coordination** showing the same data from different perspectives
+
+## 🌊 Four Live Data Streams
+
+The demo provides four real-time streams that update automatically when data changes:
+
+1. **Products Stream** - Products with current pricing (enriched view)
+2. **Prices Stream** - Raw price data (focused view)
+3. **Users Stream** - User information 
+4. **User-Owned Products Stream** - Ownership data enriched with user, product, and pricing details
+
+## 🎬 Interactive Demo
+
+Run the comprehensive demo that shows:
+
+- Creating products and adding prices
+- Users purchasing products with automatic data enrichment
+- Price changes propagating across multiple streams simultaneously
+- Real-time investment tracking (purchase price vs. current price)
+- Cross-resource updates and cascading deletes
 
 ```bash
-# Create a new Skip service using this template
-npx create-skip-service my-service --template with_postgres
-
-# Navigate to your project
-cd my-service
-
-# Initialize the development server
-./init_server.sh
+# Quick start - run everything
+./init_server.sh      # Setup database and build
+./demo_skip_full.sh    # Run the interactive demo
 ```
 
-## Features
+## ⚡ Key Features Demonstrated
 
-- **Real-time Streaming**: Built-in support for Skip's reactive data system
-- **PostgreSQL Integration**: Ready-to-use database configuration
-- **TypeScript Support**: Full TypeScript setup with proper configuration
-- **API Endpoints**: Pre-configured REST endpoints for common operations
-- **Development Tools**: Includes formatting, building, and cleaning scripts
+### Real-Time Reactivity
+- No polling required - changes appear instantly
+- Skip automatically manages data relationships
+- Consistent data across all streams
 
-## Available Scripts
+### Data Enrichment
+- Products include current pricing
+- User-owned products automatically include user details, product info, AND current pricing
+- Cross-table joins happen automatically
 
-In the project directory, you can run:
+### Cross-Resource Updates
+- Price changes update products, prices, AND user-owned-products streams
+- Product info changes propagate to user-owned-products
+- User info updates propagate to related records
 
-- `pnpm build` - Builds the service for production
-- `pnpm start` - Runs the built service
-- `pnpm clean` - Cleans build artifacts and dependencies
-- `pnpm format` - Formats code using Prettier
-- `pnpm client` - Runs the example client
+### Investment Tracking
+- Compare purchase price vs current price in real-time
+- Perfect for portfolio tracking and financial applications
+- Historical data preservation with live market updates
 
-## API Structure
+## 🏗️ Architecture
 
-The template includes the following API endpoints:
+Built with modern technologies:
 
-### Posts
+- **Skip** - Reactive data streaming framework
+- **TypeScript** - Type-safe development
+- **Fastify** - High-performance web framework
+- **PostgreSQL** - Relational database with sample data
+- **Docker** - Containerized database setup
 
-- `GET /posts/:id` - Get a specific post
-- `POST /posts` - Create a new post
-- `PATCH /posts/:id/publish` - Publish a post
-- `PATCH /posts/:id/unpublish` - Unpublish a post
-- `DELETE /posts/:id` - Delete a post
+### Database Schema
+- `users` - User accounts with sample data (Ada Lovelace, Alan Turing, etc.)
+- `products` - Product catalog
+- `product_prices` - Current pricing data
+- `user_owned_products` - User ownership with purchase history
+- Rich sample data for immediate demonstration
 
-### Users
-
-- `GET /users` - List all users
-- `GET /users/:id` - Get a specific user
-
-### Streaming
-
-- `GET /streams/posts` - Get a stream of all posts
-- `GET /streams/posts/:uid` - Get a stream for a specific post
-
-## Development
+## 🛠️ Development
 
 ### Prerequisites
-
 - Node.js (Latest LTS version)
 - pnpm package manager
 - Docker (for PostgreSQL)
 
-### Clean Up
-
-To clean up the development environment:
-
+### Quick Start
 ```bash
-pnpm clean
-docker stop skip-demo-postgres && docker rm skip-demo-postgres
+# Complete setup
+./init_server.sh
+
+# Or manual setup
+pnpm install
+pnpm build
+pnpm start
+
+# Clean everything
+./clean_all.sh
 ```
 
-## Learn More
+### Available Scripts
+- `./init_server.sh` - Complete setup (database + build)
+- `./demo_skip_full.sh` - Run interactive demo
+- `./clean_all.sh` - Complete cleanup (Docker + files)
+- `pnpm build` - Build TypeScript
+- `pnpm start` - Start the server
+- `pnpm format` - Format code
 
-To learn more about Skip and its features:
+## 📡 API Endpoints
+
+### Core Resources
+- **Products**: `/products` (CRUD)
+- **Prices**: `/product-prices` (CRUD)
+- **Users**: `/users` (GET only)
+- **User-Owned Products**: `/user-owned-products` (CRUD)
+
+### Real-Time Streams
+- **Products**: `/streams/products`
+- **Prices**: `/streams/prices`
+- **Users**: `/streams/users` 
+- **User-Owned Products**: `/streams/user-owned-products`
+
+All streams support filtering by ID: `/streams/{resource}/:uid`
+
+## 🎯 Perfect For Demonstrating
+
+- **Financial Applications** - Portfolio tracking, investment monitoring
+- **E-commerce Platforms** - Inventory with pricing, user purchases
+- **IoT Dashboards** - Sensor data with metadata enrichment
+- **Real-time Analytics** - Live data aggregation and correlation
+- **Any application** requiring live, enriched data views
+
+## 🎪 Demo Presentation
+
+Use `DEMO_SCRIPT.md` for guided presentation talking points.
+
+**Typical demo flow (~5-7 minutes):**
+1. Show existing data streams
+2. Create product → watch streams update
+3. Add pricing → see cross-stream updates
+4. User purchase → demonstrate data enrichment
+5. Price increase → show reactive propagation
+6. Product updates → cross-resource synchronization
+
+## 🔗 Learn More
 
 - [Skip Documentation](https://skiplabs.io/docs/)
 - [Skip GitHub Repository](https://github.com/skiplabs/skip)
+- [Create Skip Service](https://github.com/SkipLabs/create-skip-service)
 
-## License
+## 📄 License
 
-This template is licensed under the ISC License.
+ISC License
+
+---
+
+**Ready to see reactive data streaming in action?** Run `./demo_skip_full.sh` and watch the magic happen! ✨
